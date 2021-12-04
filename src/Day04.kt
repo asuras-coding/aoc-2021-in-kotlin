@@ -74,6 +74,7 @@ private fun inputToDrawNumbersAndBoards(input: List<String>): Pair<List<Int>, Li
     val boards =
         input.asSequence().drop(2).map { l -> l.split(" ").filter { it.isNotBlank() }.map { it.toInt() } }.filter { it.size > 1 }.chunked(5)
             .map {
-                BingoBoard(it) }.toList()
+                BingoBoard(it)
+            }.toList()
     return drawNumbers to boards
 }
