@@ -3,23 +3,8 @@ import kotlin.math.abs
 fun main() {
 
     fun part1(input: List<String>): Long {
-        val rebootSteps = readSteps(input).take(20)
-        val turnedOnCubes = mutableSetOf<Cube2>()
-        for ((i, step) in rebootSteps.withIndex()) {
-            for (x in step.cube.x) {
-                for (y in step.cube.y) {
-                    for (z in step.cube.z) {
-                        if (step is On) {
-                            turnedOnCubes.add(Cube2(x, y, z))
-                        } else {
-                            turnedOnCubes.remove(Cube2(x, y, z))
-                        }
-                    }
-                }
-            }
-            println("size after step: ${i+1} = ${turnedOnCubes.size}")
-        }
-        return turnedOnCubes.size.toLong()
+        val steps = readSteps(input).take(20)
+        return executeSteps(steps)
     }
 
     fun part2(input: List<String>): Long {
@@ -32,15 +17,13 @@ fun main() {
     val testInput2 = readInput("Day22_testb")
     check(part1(testInput) == 590784L)
     check(part2(testInput2) == 2758514936282235L)
-    // 2758514936282235 <- solution
-    // 2758514936265179 <- mine
 
     val input = readInput("Day22")
     println(part1(input))
     println(part2(input))
 }
 
-private fun readSteps(input: List<String>): List<Step> = input.map(::toStep)
+// -------------------- execution --------------------
 
 private fun executeSteps(steps: List<Step>): Long {
     var cubeRanges = emptyList<Cube>()
@@ -52,26 +35,7 @@ private fun executeSteps(steps: List<Step>): Long {
     return cubeRanges.sumOf { it.size }
 }
 
-private fun toStep(line: String): Step {
-    val (operator, ranges) = line.split(" ")
-    val (x, y, z) = ranges.split(",")
-    val (x1, x2) = x.split("=").last().split("..").map { it.toInt() }
-    val (y1, y2) = y.split("=").last().split("..").map { it.toInt() }
-    val (z1, z2) = z.split("=").last().split("..").map { it.toInt() }
-    return when (operator) {
-        "on" -> On(Cube(x1..x2, y1..y2, z1..z2))
-        else -> Off(Cube(x1..x2, y1..y2, z1..z2))
-    }
-}
-
-fun IntRange.size() = if (isEmpty()) 0 else abs(last - first) + 1
-
-private fun IntRange.limitToRange(other: IntRange): IntRange =
-    IntRange(this.first.coerceAtLeast(other.first), this.last.coerceAtMost(other.last))
-
-private infix fun Int.exclusiveTo(end: Int) = IntRange(this + 1, end - 1)
-private infix fun Int.exclusiveStart(end: Int) = IntRange(this + 1, end)
-private infix fun Int.exclusiveEnd(end: Int) = IntRange(this, end - 1)
+// -------------------- step and cubes --------------------
 
 sealed class Step(open val cube: Cube)
 data class On(override val cube: Cube) : Step(cube)
@@ -106,12 +70,12 @@ data class Cube(val x: IntRange, val y: IntRange, val z: IntRange) {
         return cuts.toList()
     }
 
-    private fun canCutLeft(xRange: IntRange): Boolean = xRange.first in x.first exclusiveTo x.last
-    private fun canCutRight(xRange: IntRange): Boolean = xRange.last in x.first exclusiveTo x.last
-    private fun canCutBottom(yRange: IntRange): Boolean = yRange.first in y.first exclusiveTo y.last
-    private fun canCutTop(yRange: IntRange): Boolean = yRange.last in y.first exclusiveTo y.last
-    private fun canCutFront(zRange: IntRange): Boolean = zRange.first in z.first exclusiveTo z.last
-    private fun canCutBack(zRange: IntRange): Boolean = zRange.last in z.first exclusiveTo z.last
+    private fun canCutLeft(xRange: IntRange): Boolean = xRange.first in x.first exclusiveStart  x.last
+    private fun canCutRight(xRange: IntRange): Boolean = xRange.last in x.first exclusiveEnd  x.last
+    private fun canCutBottom(yRange: IntRange): Boolean = yRange.first in y.first exclusiveStart  y.last
+    private fun canCutTop(yRange: IntRange): Boolean = yRange.last in y.first exclusiveEnd  y.last
+    private fun canCutFront(zRange: IntRange): Boolean = zRange.first in z.first exclusiveStart  z.last
+    private fun canCutBack(zRange: IntRange): Boolean = zRange.last in z.first exclusiveEnd  z.last
 
     private fun cutLeft(xRange: IntRange): Cube =
         Cube(x.first exclusiveEnd xRange.first, y, z)
@@ -131,3 +95,27 @@ data class Cube(val x: IntRange, val y: IntRange, val z: IntRange) {
     private fun cutBack(xRange: IntRange, yRange: IntRange, zRange: IntRange): Cube =
         Cube(xRange.limitToRange(x), yRange.limitToRange(y), zRange.last exclusiveStart z.last)
 }
+
+// ------------------- helper functions -------------------
+
+private fun readSteps(input: List<String>): List<Step> = input.map(::toStep)
+
+private fun toStep(line: String): Step {
+    val (operator, ranges) = line.split(" ")
+    val (x, y, z) = ranges.split(",")
+    val (x1, x2) = x.split("=").last().split("..").map { it.toInt() }
+    val (y1, y2) = y.split("=").last().split("..").map { it.toInt() }
+    val (z1, z2) = z.split("=").last().split("..").map { it.toInt() }
+    return when (operator) {
+        "on" -> On(Cube(x1..x2, y1..y2, z1..z2))
+        else -> Off(Cube(x1..x2, y1..y2, z1..z2))
+    }
+}
+
+fun IntRange.size() = if (isEmpty()) 0 else abs(last - first) + 1
+
+private fun IntRange.limitToRange(other: IntRange): IntRange =
+    IntRange(this.first.coerceAtLeast(other.first), this.last.coerceAtMost(other.last))
+
+private infix fun Int.exclusiveStart(end: Int) = IntRange(this + 1, end)
+private infix fun Int.exclusiveEnd(end: Int) = IntRange(this, end - 1)
